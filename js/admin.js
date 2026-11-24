@@ -381,7 +381,7 @@ async function schedule() {
   const weekly = (data || []).filter((x) => !x.event_date);
   const special = (data || []).filter((x) => x.event_date).sort((a, b) => b.event_date.localeCompare(a.event_date));
   const row = (x) => `<tr><td><b>${x.event_date ? fmtDate(x.event_date + "T00:00") : DAYS[x.day_of_week]}</b></td>
-    <td>${esc(x.time_text)}</td><td><b>${esc(x.title)}</b>${x.notes ? `<div class="small muted">${esc(x.notes)}</div>` : ""}</td>
+    <td>${esc(x.time_text)}</td><td>${x.no_doctor ? `<span class="chip red">🔴 No Doctor</span> ` : ""}<b>${esc(x.title)}</b>${x.notes ? `<div class="small muted">Remarks: ${esc(x.notes)}</div>` : ""}</td>
     <td>${esc(x.staff)}</td><td style="white-space:nowrap"><button class="btn sm light" onclick="editSch(${x.id})">Edit</button>
     <button class="btn sm red" onclick="delSch(${x.id})">✕</button></td></tr>`;
   const head = `<tr><th>Day</th><th>Time</th><th>Service / Activity</th><th>Staff</th><th></th></tr>`;
@@ -394,7 +394,7 @@ async function schedule() {
 }
 
 window.editSch = async (id) => {
-  let x = { day_of_week: 1, event_date: null, time_text: "8:00 AM – 12:00 NN", title: "", staff: "", notes: "" };
+  let x = { day_of_week: 1, event_date: null, time_text: "8:00 AM – 12:00 NN", title: "", staff: "", notes: "", no_doctor: false };
   if (id) x = (await sb.from("schedules").select("*").eq("id", id).single()).data;
   const special = !!x.event_date;
   modal(`<h3>${id ? "Edit" : "Add"} Schedule</h3>
@@ -405,9 +405,10 @@ window.editSch = async (id) => {
         ${DAYS.map((d, i) => `<option value="${i}" ${x.day_of_week === i ? "selected" : ""}>${d}</option>`).join("")}</select></div>
       <div id="sBox" class="${special ? "" : "hidden"}"><label>Date</label><input class="field" type="date" name="event_date" value="${esc(x.event_date || "")}"></div>
       <label>Time</label><input class="field" name="time_text" value="${esc(x.time_text)}" placeholder="8:00 AM – 12:00 NN">
-      <label>Service / activity *</label><input class="field" name="title" required value="${esc(x.title)}" placeholder="e.g. Immunization">
+      <label class="check nodoc-check"><input type="checkbox" name="no_doctor" ${x.no_doctor ? "checked" : ""}> 🔴 No Doctor</label>
+      <label>Service / activity <span id="tReq">*</span></label><input class="field" name="title" value="${esc(x.title)}" placeholder="e.g. Immunization">
       <label>Doctor / staff in charge</label><input class="field" name="staff" value="${esc(x.staff)}">
-      <label>Notes</label><textarea class="field" name="notes" placeholder="e.g. Bring your baby book">${esc(x.notes)}</textarea>
+      <label>Remarks</label><textarea class="field" name="notes" placeholder="e.g. Doctor on leave — midwife and nurse are available. Bring your baby book.">${esc(x.notes)}</textarea>
       <button class="btn block" style="margin-top:16px">Save</button>
     </form>`, (w) => {
     let mode = special ? "s" : "w";
@@ -421,7 +422,10 @@ window.editSch = async (id) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target));
       if (mode === "s" && !f.event_date) return toast("Pick a date.", "err");
-      const row = { time_text: f.time_text, title: f.title.trim(), staff: f.staff, notes: f.notes,
+      const noDoc = !!f.no_doctor;
+      const title = f.title.trim() || (noDoc ? "No Doctor" : "");
+      if (!title) return toast("Enter the service / activity.", "err");
+      const row = { time_text: f.time_text, title, staff: f.staff, notes: f.notes.trim(), no_doctor: noDoc,
         day_of_week: mode === "w" ? +f.day_of_week : null, event_date: mode === "s" ? f.event_date : null };
       const { error } = id ? await sb.from("schedules").update(row).eq("id", id) : await sb.from("schedules").insert(row);
       if (error) return toast(friendlyError(error), "err");

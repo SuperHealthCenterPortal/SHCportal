@@ -158,12 +158,13 @@ async function schedule() {
 }
 
 function schedCard(x, withDate) {
-  return `<div class="card sched">
+  return `<div class="card sched ${x.no_doctor ? "nodoc" : ""}">
     <div class="time">${withDate ? `<div>${fmtDate(x.event_date + "T00:00")}</div>` : ""}${esc(x.time_text || "")}</div>
     <div class="grow">
-      <h4>${esc(x.title)}</h4>
+      ${x.no_doctor ? `<span class="chip red" style="margin-bottom:4px">🔴 No Doctor</span>` : ""}
+      ${x.no_doctor && x.title === "No Doctor" ? "" : `<h4>${esc(x.title)}</h4>`}
       ${x.staff ? `<div class="small muted">👩‍⚕️ ${esc(x.staff)}</div>` : ""}
-      ${x.notes ? `<div class="small" style="margin-top:4px">${rich(x.notes)}</div>` : ""}
+      ${x.notes ? `<div class="remarks"><b>Remarks:</b> ${rich(x.notes)}</div>` : ""}
     </div></div>`;
 }
 

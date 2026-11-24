@@ -74,6 +74,10 @@ main{max-width:760px;margin:0 auto;padding:16px 16px 100px}
 .sched{display:flex;gap:14px;align-items:flex-start}
 .sched .time{min-width:92px;font-weight:700;color:var(--brand-d);font-size:13px}
 .sched h4{font-size:15.5px}
+.sched.nodoc{border-left:5px solid var(--red);background:#fffafa}
+.remarks{font-size:13.5px;margin-top:6px;background:#f4f8f7;border-radius:10px;padding:7px 10px}
+.sched.nodoc .remarks{background:var(--red-l)}
+.nodoc-check{background:var(--red-l);border-radius:10px;padding:10px 12px;color:#8d2626}
 
 /* ---------- forms ---------- */
 label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px;color:#2c4440}

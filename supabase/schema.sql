@@ -98,10 +98,12 @@ create table if not exists public.schedules (
   time_text    text default '',                           -- e.g. "8:00 AM – 12:00 NN"
   title        text not null,                             -- e.g. "Prenatal Check-up"
   staff        text default '',                           -- e.g. "Dr. Santos / Midwife"
-  notes        text default '',
+  notes        text default '',                           -- shown as "Remarks"
+  no_doctor    boolean not null default false,            -- 🔴 No Doctor
   created_at   timestamptz not null default now(),
   check (day_of_week is not null or event_date is not null)
 );
+alter table public.schedules add column if not exists no_doctor boolean not null default false;
 
 -- ---------- QUESTIONS (Q&A) ----------
 create table if not exists public.questions (
