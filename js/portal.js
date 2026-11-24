@@ -272,7 +272,6 @@ window.openConsult = async function (id) {
       ${c.symptoms_since ? `<div class="small muted" style="margin-top:6px">Since: ${esc(c.symptoms_since)}</div>` : ""}
     </div>
     ${c.schedule_at ? `<div class="notice" style="margin-bottom:10px">📅 Scheduled: <b>${fmtDateTime(c.schedule_at)}</b></div>` : ""}
-    ${c.meeting_link ? `<a class="btn block" style="margin-bottom:10px" href="${esc(c.meeting_link)}" target="_blank" rel="noopener">🎥 Join Video Call</a>` : ""}
     ${c.doctor_notes ? `<div class="card"><div class="small muted">Doctor's advice</div><div>${rich(c.doctor_notes)}</div></div>` : ""}
     <div class="section-title" style="margin-top:8px">Messages</div>
     <div class="chat" style="height:min(46vh,420px)">

@@ -202,17 +202,13 @@ async function openC(id) {
         ${c.preferred_date || c.preferred_time ? `<div class="small muted">Preferred: ${c.preferred_date ? fmtDate(c.preferred_date + "T00:00") : ""} ${esc(c.preferred_time || "")}</div>` : ""}
       </div>
       <form id="cEdit">
-        <div class="grid2">
-          <div><label>Schedule (date & time)</label><input class="field" type="datetime-local" name="schedule_at" value="${local}"></div>
-          <div><label>Video call link (Google Meet / Messenger)</label><input class="field" name="meeting_link" value="${esc(c.meeting_link || "")}" placeholder="https://meet.google.com/…"></div>
-        </div>
+        <label>Schedule (date & time)</label><input class="field" type="datetime-local" name="schedule_at" value="${local}">
         <label>Doctor's advice / notes (patient can see this)</label>
         <textarea class="field" name="doctor_notes">${esc(c.doctor_notes || "")}</textarea>
         <div class="row wrap" style="margin-top:12px">
           ${c.status === "pending" ? `<button class="btn" data-s="accepted">✔ Accept & save</button>` : `<button class="btn" data-s="">💾 Save</button>`}
           ${c.status !== "completed" ? `<button class="btn light" data-s="completed">✅ Mark completed</button>` : ""}
           ${c.status === "pending" ? `<button class="btn ghost" data-s="cancelled">Decline</button>` : ""}
-          <button type="button" class="btn ghost" id="jitsi">🎥 Make free video link</button>
         </div>
       </form>
     </div>
@@ -231,10 +227,6 @@ async function openC(id) {
     $("#cDetail").innerHTML = html;
     host = $("#cDetail");
   }
-  $("#jitsi", host).onclick = () => {
-    $("[name=meeting_link]", host).value = "https://meet.jit.si/BabakSHC-" + c.id + "-" + Math.random().toString(36).slice(2, 8);
-    toast("Link created — press Save to send it to the patient.");
-  };
   let action = "";
   $$("#cEdit button[data-s]", host).forEach((b) => (b.onclick = () => (action = b.dataset.s)));
   $("#cEdit", host).onsubmit = async (e) => {
@@ -242,7 +234,6 @@ async function openC(id) {
     const f = Object.fromEntries(new FormData(e.target));
     const upd = {
       schedule_at: f.schedule_at ? new Date(f.schedule_at).toISOString() : null,
-      meeting_link: f.meeting_link.trim() || null,
       doctor_notes: f.doctor_notes.trim() || null
     };
     if (action) upd.status = action;

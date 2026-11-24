@@ -1,7 +1,7 @@
 # 🏥 Babak Super Health Center — Patient Portal
 
-**For patients:** Announcements · Clinic Schedule · Questions (Q&A) · Online Doctor Consultation (chat + video link) · "Doctor is IN / No doctor today" status
-**For staff (`admin.html`):** Doctor status · Consultations (accept, schedule, video link, advice, live chat) · Answer questions · Announcements · Schedule · Users & Roles
+**For patients:** Announcements · Clinic Schedule · Questions (Q&A) · Online Doctor Consultation (chat with doctor) · "Doctor is IN / No doctor today" status
+**For staff (`admin.html`):** Doctor status · Consultations (accept, schedule, advice, live chat) · Answer questions · Announcements · Schedule · Users & Roles
 
 Runs on **GitHub Pages** (free hosting) + **Supabase** (free database/login) + an **Android APK** that GitHub builds for you automatically.
 
@@ -73,10 +73,6 @@ where id = (select id from auth.users where email = '09XXXXXXXXX@babakshc.app');
 | staff | Everything in the Staff Dashboard except Users & Roles |
 | doctor | Same as staff (and gets "Dr." added to name in chats/answers) |
 | admin | Everything, including changing roles |
-
-## Video calls
-
-In a consultation, the doctor can paste a **Google Meet / Messenger** link, or press **"Make free video link"** to create a free **Jitsi Meet** room (no account needed). The patient sees a **Join Video Call** button.
 
 ## Password resets
 
