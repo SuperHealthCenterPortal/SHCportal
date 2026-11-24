@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Staff Dashboard — Babak Super Health Center</title>
+<meta name="theme-color" content="#0b3f35">
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="staff-layout">
+  <aside class="side" id="side">
+    <div class="brand"><img src="icons/logo.svg" alt=""><div><b>Babak SHC</b><div class="small" style="opacity:.7">Staff Dashboard</div></div></div>
+    <button data-v="dash" class="on">📊 Dashboard</button>
+    <button data-v="consults">🩺 Consultations <span class="badge hidden" id="bC"></span></button>
+    <button data-v="questions">💬 Questions <span class="badge hidden" id="bQ"></span></button>
+    <button data-v="announcements">📢 Announcements</button>
+    <button data-v="schedule">📅 Schedule</button>
+    <button data-v="users" id="usersBtn" class="hidden">👥 Users & Roles</button>
+    <button onclick="location.href='index.html'">↩ Patient Portal</button>
+    <div class="foot"><div id="whoami"></div><button id="logoutBtn" style="padding:6px 0;color:#9fd6c7">Log out</button></div>
+  </aside>
+  <div class="grow" style="min-width:0">
+    <header class="topbar staff-top">
+      <div class="logo"><img src="icons/logo.svg" alt=""></div>
+      <div class="grow"><h1>Staff Dashboard</h1><small>Babak SHC</small></div>
+      <select id="mNav" class="field" style="width:auto;padding:8px;font-size:13px">
+        <option value="dash">📊 Dashboard</option><option value="consults">🩺 Consults</option>
+        <option value="questions">💬 Questions</option><option value="announcements">📢 Announce</option>
+        <option value="schedule">📅 Schedule</option><option value="users">👥 Users</option>
+        <option value="portal">↩ Portal</option><option value="logout">Log out</option>
+      </select>
+    </header>
+    <main class="staff-main" id="view"></main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

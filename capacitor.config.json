@@ -1,0 +1,7 @@
+{
+  "appId": "ph.babakshc.portal",
+  "appName": "Babak SHC",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "plugins": { "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#0e7c66", "showSpinner": false } }
+}

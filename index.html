@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Babak Super Health Center — Patient Portal</title>
+<meta name="description" content="Announcements, clinic schedule, questions and online doctor consultation for Babak Super Health Center.">
+<meta name="theme-color" content="#0e7c66">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="splash">
+  <div class="ring"><img src="icons/logo.svg" alt=""></div>
+  <b>Babak Super Health Center</b>
+  <small>Patient Portal</small>
+</div>
+
+<header class="topbar">
+  <div class="logo"><img src="icons/logo.svg" alt="Logo"></div>
+  <div class="grow">
+    <h1 id="centerName">Babak Super Health Center</h1>
+    <small>Patient Portal</small>
+  </div>
+  <button class="icon-btn hidden" id="staffLink" onclick="location.href='admin.html'">Staff ➜</button>
+</header>
+
+<main id="view"></main>
+
+<nav class="bottom-nav" id="nav">
+  <button data-v="home" class="on"><span class="i">🏠</span>Home</button>
+  <button data-v="schedule"><span class="i">📅</span>Schedule</button>
+  <button data-v="consult"><span class="i">🩺</span>Consult<span class="badge hidden" id="consultBadge"></span></button>
+  <button data-v="ask"><span class="i">💬</span>Questions</button>
+  <button data-v="me"><span class="i">👤</span>Account</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/portal.js"></script>
+</body>
+</html>

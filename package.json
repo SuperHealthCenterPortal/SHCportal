@@ -1,0 +1,18 @@
+{
+  "name": "babak-shc-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Babak Super Health Center Patient Portal (Capacitor Android wrapper)",
+  "scripts": {
+    "www": "rm -rf www && mkdir www && cp -r index.html admin.html manifest.webmanifest sw.js css js icons www/"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

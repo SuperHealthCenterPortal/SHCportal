@@ -1,0 +1,67 @@
+# Builds the Android installer (APK) automatically every time you push to GitHub.
+# Download it from:  your repo → Releases  (or Actions → latest run → Artifacts)
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ "README.md", "supabase/**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Copy web files into www
+        run: npm run www
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Generate app icon & splash
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#ffffff' --splashBackgroundColor '#0e7c66'
+        continue-on-error: true
+
+      - name: Sync
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../BabakSHC-PatientPortal.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BabakSHC-PatientPortal-apk
+          path: BabakSHC-PatientPortal.apk
+
+      - name: Publish to Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Babak SHC App v1.0.${{ github.run_number }}
+          body: |
+            📲 Android installer for the Babak Super Health Center Patient Portal.
+            Download **BabakSHC-PatientPortal.apk** below, open it on your phone, and allow "Install unknown apps" if asked.
+          files: BabakSHC-PatientPortal.apk
+          make_latest: true
