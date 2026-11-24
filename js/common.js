@@ -85,6 +85,47 @@
     return wrap;
   };
 
+  // ---------- AUTO REFRESH ----------
+  // Re-runs `refresh` every `seconds` and when the app comes back to the screen,
+  // but never while the user is typing or has a popup open.
+  // Also reloads the whole app when a new version is published on GitHub.
+  window.isBusy = () => {
+    const a = document.activeElement;
+    if ($(".modal-wrap")) return true;
+    if (a && ["INPUT", "TEXTAREA", "SELECT"].includes(a.tagName)) return true;
+    return false;
+  };
+  const codeHash = async () => {
+    try {
+      const files = ["js/portal.js", "js/admin.js", "js/common.js", "css/style.css"];
+      const txt = (await Promise.all(files.map((f) =>
+        fetch(f + "?v=" + Date.now(), { cache: "no-store" }).then((r) => r.text())))).join("");
+      let h = 0; for (let i = 0; i < txt.length; i++) h = (h * 31 + txt.charCodeAt(i)) | 0;
+      return h;
+    } catch (e) { return null; }
+  };
+  window.startAutoRefresh = (refresh, seconds = 30) => {
+    let firstHash = null, hiddenAt = 0, lastCodeCheck = Date.now();
+    codeHash().then((h) => (firstHash = h));
+    const checkNewVersion = async () => {
+      lastCodeCheck = Date.now();
+      const h = await codeHash();
+      if (firstHash !== null && h !== null && h !== firstHash && !isBusy()) location.reload();
+    };
+    setInterval(() => {
+      if (document.hidden || !navigator.onLine) return;
+      if (!isBusy()) refresh();
+      if (Date.now() - lastCodeCheck > 5 * 60 * 1000) checkNewVersion();
+    }, seconds * 1000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (isBusy()) return;
+      refresh();
+      if (Date.now() - hiddenAt > 60 * 1000) checkNewVersion();
+    });
+    window.addEventListener("online", () => { if (!isBusy()) refresh(); });
+  };
+
   // Register service worker (PWA install / offline shell)
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

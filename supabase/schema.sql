@@ -136,6 +136,8 @@ create table if not exists public.consultations (
   doctor_name     text,
   schedule_at     timestamptz,
   meeting_link    text,
+  doctor_available     boolean,          -- 🟢 Available / 🔴 Not Available
+  availability_remarks text,             -- remarks when Not Available
   doctor_notes    text,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
@@ -150,6 +152,9 @@ create table if not exists public.consult_messages (
   body             text not null check (char_length(body) between 1 and 4000),
   created_at       timestamptz not null default now()
 );
+alter table public.consultations add column if not exists doctor_available boolean;
+alter table public.consultations add column if not exists availability_remarks text;
+
 create index if not exists consult_messages_cid on public.consult_messages(consultation_id, created_at);
 
 -- =====================================================================
@@ -214,6 +219,8 @@ begin
     new.schedule_at  := old.schedule_at;
     new.meeting_link := old.meeting_link;
     new.doctor_notes := old.doctor_notes;
+    new.doctor_available     := old.doctor_available;
+    new.availability_remarks := old.availability_remarks;
     new.patient_id   := old.patient_id;
     if new.status <> old.status and new.status <> 'cancelled' then
       new.status := old.status;

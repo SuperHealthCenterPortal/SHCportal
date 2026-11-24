@@ -46,8 +46,17 @@ async function start() {
     })
     .subscribe();
   // questions are not in realtime publication for anon safety — poll lightly
-  setInterval(badges, 60000);
   badges();
+  startAutoRefresh(() => {
+    badges();
+    const v = S.view;
+    if (v === "dash" && !S._dashDirty) dash();
+    else if (v === "consults") consults(true);
+    else if (v === "announcements") announcements();
+    else if (v === "schedule") schedule();
+    else if (v === "users" && !$("#uS")?.value) users();
+    else if (v === "questions" && ![...$$("#view textarea")].some((t) => t.value.trim() !== (t.defaultValue || "").trim())) questions();
+  }, 30);
   const h = location.hash.replace("#", "");
   go(["dash", "consults", "questions", "announcements", "schedule", "users"].includes(h) ? h : "dash");
 }
@@ -100,6 +109,30 @@ function loginView() {
   };
 }
 
+// Available / Not Available toggle — remarks only when Not Available
+function availToggle(isAvail, remarks) {
+  return `<div class="avail">
+    <input type="hidden" name="available" value="${isAvail ? "1" : "0"}">
+    <div class="toggle-big">
+      <button type="button" class="in ${isAvail ? "on" : ""}" data-a="1">🟢 Available</button>
+      <button type="button" class="out ${!isAvail ? "on" : ""}" data-a="0">🔴 Not Available</button>
+    </div>
+    <div class="avail-remarks ${isAvail ? "hidden" : ""}">
+      <label>Remarks *</label>
+      <textarea class="field" name="avail_remarks" placeholder="e.g. Doctor is on leave. Midwife and nurse are available.">${esc(remarks || "")}</textarea>
+    </div></div>`;
+}
+function bindAvail(root) {
+  $$(".avail", root).forEach((box) => {
+    $$(".toggle-big button", box).forEach((b) => (b.onclick = () => {
+      $("input[name=available]", box).value = b.dataset.a;
+      $$(".toggle-big button", box).forEach((y) => y.classList.toggle("on", y === b));
+      $(".avail-remarks", box).classList.toggle("hidden", b.dataset.a === "1");
+      if (b.dataset.a === "0") $("textarea", box).focus();
+    }));
+  });
+}
+
 // ------------------------------------------------------------ DASHBOARD
 async function dash() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -136,7 +169,9 @@ async function dash() {
       <button class="btn light" onclick="editAnn()">📢 Post announcement</button>
     </div>`;
   let doctorIn = s.doctor_in;
+  S._dashDirty = false;
   $$(".toggle-big button").forEach((x) => (x.onclick = () => {
+    S._dashDirty = true;
     doctorIn = x.dataset.v === "1";
     $$(".toggle-big button").forEach((y) => y.classList.toggle("on", y === x));
   }));
@@ -189,7 +224,7 @@ async function openC(id) {
   $$("#cList .consult").forEach((el) => el.classList.toggle("sel", +el.dataset.id === id));
   const { data: c } = await sb.from("consultations").select("*").eq("id", id).single();
   if (!c) return;
-  const local = c.schedule_at ? new Date(new Date(c.schedule_at) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "";
+  const avail = c.doctor_available !== false;
   const html = `
     <div class="card">
       <div class="top row" style="justify-content:space-between;align-items:flex-start">
@@ -199,10 +234,11 @@ async function openC(id) {
       <div class="card" style="background:#f7faf9;margin:12px 0 8px">
         <div class="small muted">Concern</div>${rich(c.concern)}
         ${c.symptoms_since ? `<div class="small muted" style="margin-top:6px">Since: ${esc(c.symptoms_since)}</div>` : ""}
-        ${c.preferred_date || c.preferred_time ? `<div class="small muted">Preferred: ${c.preferred_date ? fmtDate(c.preferred_date + "T00:00") : ""} ${esc(c.preferred_time || "")}</div>` : ""}
+        ${c.preferred_date ? `<div class="small muted">Preferred date: ${fmtDate(c.preferred_date + "T00:00")}</div>` : ""}
       </div>
       <form id="cEdit">
-        <label>Schedule (date & time)</label><input class="field" type="datetime-local" name="schedule_at" value="${local}">
+        <label>Doctor availability</label>
+        ${availToggle(avail, c.availability_remarks)}
         <label>Doctor's advice / notes (patient can see this)</label>
         <textarea class="field" name="doctor_notes">${esc(c.doctor_notes || "")}</textarea>
         <div class="row wrap" style="margin-top:12px">
@@ -227,13 +263,17 @@ async function openC(id) {
     $("#cDetail").innerHTML = html;
     host = $("#cDetail");
   }
+  bindAvail(host);
   let action = "";
   $$("#cEdit button[data-s]", host).forEach((b) => (b.onclick = () => (action = b.dataset.s)));
   $("#cEdit", host).onsubmit = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target));
+    const isAvail = f.available === "1";
+    if (!isAvail && !(f.avail_remarks || "").trim()) return toast("Please add remarks for Not Available.", "err");
     const upd = {
-      schedule_at: f.schedule_at ? new Date(f.schedule_at).toISOString() : null,
+      doctor_available: isAvail,
+      availability_remarks: isAvail ? null : f.avail_remarks.trim(),
       doctor_notes: f.doctor_notes.trim() || null
     };
     if (action) upd.status = action;
@@ -376,15 +416,16 @@ window.delAnn = async (id) => {
 
 // ------------------------------------------------------------ SCHEDULE
 async function schedule() {
-  const { data } = await sb.from("schedules").select("*").order("day_of_week").order("time_text");
+  const { data } = await sb.from("schedules").select("*").order("day_of_week").order("title");
   if (S.view !== "schedule") return;
   const weekly = (data || []).filter((x) => !x.event_date);
   const special = (data || []).filter((x) => x.event_date).sort((a, b) => b.event_date.localeCompare(a.event_date));
   const row = (x) => `<tr><td><b>${x.event_date ? fmtDate(x.event_date + "T00:00") : DAYS[x.day_of_week]}</b></td>
-    <td>${esc(x.time_text)}</td><td>${x.no_doctor ? `<span class="chip red">🔴 No Doctor</span> ` : ""}<b>${esc(x.title)}</b>${x.notes ? `<div class="small muted">Remarks: ${esc(x.notes)}</div>` : ""}</td>
+    <td><b>${esc(x.title)}</b></td>
+    <td>${x.no_doctor ? `<span class="chip red">🔴 Not Available</span>${x.notes ? `<div class="small muted" style="margin-top:4px">Remarks: ${esc(x.notes)}</div>` : ""}` : `<span class="chip">🟢 Available</span>`}</td>
     <td>${esc(x.staff)}</td><td style="white-space:nowrap"><button class="btn sm light" onclick="editSch(${x.id})">Edit</button>
     <button class="btn sm red" onclick="delSch(${x.id})">✕</button></td></tr>`;
-  const head = `<tr><th>Day</th><th>Time</th><th>Service / Activity</th><th>Staff</th><th></th></tr>`;
+  const head = `<tr><th>Day / Date</th><th>Service / Activity</th><th>Status</th><th>Staff</th><th></th></tr>`;
   view().innerHTML = `
     <div class="page-head"><h2>Clinic Schedule</h2><button class="btn" onclick="editSch()">＋ Add</button></div>
     <div class="section-title">Weekly services</div>
@@ -394,7 +435,7 @@ async function schedule() {
 }
 
 window.editSch = async (id) => {
-  let x = { day_of_week: 1, event_date: null, time_text: "8:00 AM – 12:00 NN", title: "", staff: "", notes: "", no_doctor: false };
+  let x = { day_of_week: 1, event_date: null, title: "", staff: "", notes: "", no_doctor: false };
   if (id) x = (await sb.from("schedules").select("*").eq("id", id).single()).data;
   const special = !!x.event_date;
   modal(`<h3>${id ? "Edit" : "Add"} Schedule</h3>
@@ -404,13 +445,13 @@ window.editSch = async (id) => {
       <div id="wBox" class="${special ? "hidden" : ""}"><label>Day</label><select class="field" name="day_of_week">
         ${DAYS.map((d, i) => `<option value="${i}" ${x.day_of_week === i ? "selected" : ""}>${d}</option>`).join("")}</select></div>
       <div id="sBox" class="${special ? "" : "hidden"}"><label>Date</label><input class="field" type="date" name="event_date" value="${esc(x.event_date || "")}"></div>
-      <label>Time</label><input class="field" name="time_text" value="${esc(x.time_text)}" placeholder="8:00 AM – 12:00 NN">
-      <label class="check nodoc-check"><input type="checkbox" name="no_doctor" ${x.no_doctor ? "checked" : ""}> 🔴 No Doctor</label>
-      <label>Service / activity <span id="tReq">*</span></label><input class="field" name="title" value="${esc(x.title)}" placeholder="e.g. Immunization">
+      <label>Service / activity *</label><input class="field" name="title" required value="${esc(x.title)}" placeholder="e.g. General Consultation">
       <label>Doctor / staff in charge</label><input class="field" name="staff" value="${esc(x.staff)}">
-      <label>Remarks</label><textarea class="field" name="notes" placeholder="e.g. Doctor on leave — midwife and nurse are available. Bring your baby book.">${esc(x.notes)}</textarea>
+      <label>Status</label>
+      ${availToggle(!x.no_doctor, x.notes)}
       <button class="btn block" style="margin-top:16px">Save</button>
     </form>`, (w) => {
+    bindAvail(w);
     let mode = special ? "s" : "w";
     $$(".seg button", w).forEach((b) => (b.onclick = () => {
       mode = b.dataset.k;
@@ -422,10 +463,10 @@ window.editSch = async (id) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target));
       if (mode === "s" && !f.event_date) return toast("Pick a date.", "err");
-      const noDoc = !!f.no_doctor;
-      const title = f.title.trim() || (noDoc ? "No Doctor" : "");
-      if (!title) return toast("Enter the service / activity.", "err");
-      const row = { time_text: f.time_text, title, staff: f.staff, notes: f.notes.trim(), no_doctor: noDoc,
+      const noDoc = f.available !== "1";
+      const remarks = (f.avail_remarks || "").trim();
+      if (noDoc && !remarks) return toast("Please add remarks for Not Available.", "err");
+      const row = { time_text: "", title: f.title.trim(), staff: f.staff, notes: noDoc ? remarks : "", no_doctor: noDoc,
         day_of_week: mode === "w" ? +f.day_of_week : null, event_date: mode === "s" ? f.event_date : null };
       const { error } = id ? await sb.from("schedules").update(row).eq("id", id) : await sb.from("schedules").insert(row);
       if (error) return toast(friendlyError(error), "err");

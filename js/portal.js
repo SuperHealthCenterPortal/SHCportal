@@ -30,6 +30,7 @@ async function init() {
   const hash = location.hash.replace("#", "");
   go(["home", "schedule", "consult", "ask", "me"].includes(hash) ? hash : "home");
   liveUpdates();
+  startAutoRefresh(autoRefresh, 30);
 }
 
 async function setUser(user) {
@@ -74,11 +75,24 @@ async function refreshBadge() {
   b.classList.toggle("hidden", !count);
 }
 
-const loading = () => (view().innerHTML = `<div class="empty"><span class="big">⏳</span>Loading…</div>`);
+const loading = () => { if (!S._silent) view().innerHTML = `<div class="empty"><span class="big">⏳</span>Loading…</div>`; };
+
+// Auto refresh: Home, Schedule, Consult refresh every 30 s and when the app is reopened.
+// Questions refreshes only if nothing is typed; Account never (it's a form).
+async function autoRefresh() {
+  const v = S.view;
+  if (v === "me") return;
+  if (v === "ask" && [...$$("#view textarea, #view input")].some((el) => el.value.trim())) return;
+  const y = window.scrollY;
+  S._silent = true;
+  try { await ({ home, schedule, consult, ask })[v](); } finally { S._silent = false; }
+  refreshBadge();
+  window.scrollTo(0, y);
+}
 
 // ------------------------------------------------------------ HOME
 async function home() {
-  if (!view().children.length || S._lastView !== "home") loading();
+  if (S._lastView !== "home") loading();
   S._lastView = "home";
   const [st, an] = await Promise.all([
     sb.from("center_status").select("*").eq("id", 1).maybeSingle(),
@@ -130,7 +144,7 @@ async function schedule() {
   S._lastView = "schedule";
   loading();
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await sb.from("schedules").select("*").order("time_text");
+  const { data, error } = await sb.from("schedules").select("*").order("title");
   if (S.view !== "schedule") return;
   if (error) return (view().innerHTML = `<div class="card notice red">${esc(friendlyError(error))}</div>`);
   const weekly = data.filter((x) => x.day_of_week !== null && !x.event_date);
@@ -159,12 +173,14 @@ async function schedule() {
 
 function schedCard(x, withDate) {
   return `<div class="card sched ${x.no_doctor ? "nodoc" : ""}">
-    <div class="time">${withDate ? `<div>${fmtDate(x.event_date + "T00:00")}</div>` : ""}${esc(x.time_text || "")}</div>
+    ${withDate ? `<div class="time">${fmtDate(x.event_date + "T00:00")}</div>` : ""}
     <div class="grow">
-      ${x.no_doctor ? `<span class="chip red" style="margin-bottom:4px">🔴 No Doctor</span>` : ""}
-      ${x.no_doctor && x.title === "No Doctor" ? "" : `<h4>${esc(x.title)}</h4>`}
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
+        <h4>${esc(x.title)}</h4>
+        ${x.no_doctor ? `<span class="chip red" style="flex:none">🔴 Not Available</span>` : `<span class="chip" style="flex:none">🟢 Available</span>`}
+      </div>
       ${x.staff ? `<div class="small muted">👩‍⚕️ ${esc(x.staff)}</div>` : ""}
-      ${x.notes ? `<div class="remarks"><b>Remarks:</b> ${rich(x.notes)}</div>` : ""}
+      ${x.no_doctor && x.notes ? `<div class="remarks"><b>Remarks:</b> ${rich(x.notes)}</div>` : ""}
     </div></div>`;
 }
 
@@ -201,7 +217,8 @@ async function consult() {
           <div class="small muted">Requested ${fmtDate(c.created_at)}${c.doctor_name ? " · " + esc(c.doctor_name) : ""}</div></div>
           <span class="chip st-${c.status}">${STATUS_LABEL[c.status]}</span>
         </div>
-        ${c.schedule_at && c.status === "accepted" ? `<div class="small" style="margin-top:8px">📅 <b>${fmtDateTime(c.schedule_at)}</b></div>` : ""}
+        ${c.doctor_available === true && c.status === "accepted" ? `<div style="margin-top:8px"><span class="chip">🟢 Doctor available</span></div>` : ""}
+        ${c.doctor_available === false && ["pending", "accepted"].includes(c.status) ? `<div style="margin-top:8px"><span class="chip red">🔴 Doctor not available</span></div>` : ""}
       </div>`).join("") :
       `<div class="card empty"><span class="big">🩺</span>No consultations yet.<br>
        <button class="btn" style="margin-top:12px" onclick="newConsult()">Request a consultation</button></div>`}`;
@@ -235,11 +252,7 @@ window.newConsult = function () {
       <textarea class="field" name="concern" required placeholder="Describe your symptoms or concern…"></textarea>
       <label>Since when?</label>
       <input class="field" name="symptoms_since" placeholder="e.g. 3 days ago">
-      <div class="grid2">
-        <div><label>Preferred date</label><input class="field" type="date" name="preferred_date" min="${new Date().toISOString().slice(0, 10)}"></div>
-        <div><label>Preferred time</label><select class="field" name="preferred_time">
-          <option value="">Any time</option><option>Morning</option><option>Afternoon</option></select></div>
-      </div>
+      <label>Preferred date</label><input class="field" type="date" name="preferred_date" min="${new Date().toISOString().slice(0, 10)}">
       <label class="check"><input type="checkbox" required> I agree that my information will be used by Babak SHC staff for my consultation only.</label>
       <button class="btn block" style="margin-top:16px">Send Request</button>
     </form>`, (w) => {
@@ -251,7 +264,7 @@ window.newConsult = function () {
         patient_id: S.user.id, patient_name: f.patient_name.trim(),
         age: f.age ? +f.age : null, sex: f.sex || null, contact: f.contact || null,
         concern: f.concern.trim(), symptoms_since: f.symptoms_since || null,
-        preferred_date: f.preferred_date || null, preferred_time: f.preferred_time || null
+        preferred_date: f.preferred_date || null
       };
       const { error } = await sb.from("consultations").insert(row);
       if (error) { btn.disabled = false; btn.textContent = "Send Request"; return toast(friendlyError(error), "err"); }
@@ -272,7 +285,9 @@ window.openConsult = async function (id) {
       <div class="small muted">Your concern</div><div>${rich(c.concern)}</div>
       ${c.symptoms_since ? `<div class="small muted" style="margin-top:6px">Since: ${esc(c.symptoms_since)}</div>` : ""}
     </div>
-    ${c.schedule_at ? `<div class="notice" style="margin-bottom:10px">📅 Scheduled: <b>${fmtDateTime(c.schedule_at)}</b></div>` : ""}
+    ${c.doctor_available === true ? `<div class="status in" style="padding:12px 14px"><span class="dot"></span><b style="font-size:15px">Doctor is available for your consultation</b></div>` : ""}
+    ${c.doctor_available === false ? `<div class="status out" style="padding:12px 14px;align-items:flex-start"><span class="dot" style="margin-top:4px"></span><div><b style="font-size:15px">Doctor is not available</b>
+      ${c.availability_remarks ? `<div class="small" style="margin-top:2px"><span style="font-weight:700">Remarks:</span> ${rich(c.availability_remarks)}</div>` : ""}</div></div>` : ""}
     ${c.doctor_notes ? `<div class="card"><div class="small muted">Doctor's advice</div><div>${rich(c.doctor_notes)}</div></div>` : ""}
     <div class="section-title" style="margin-top:8px">Messages</div>
     <div class="chat" style="height:min(46vh,420px)">
