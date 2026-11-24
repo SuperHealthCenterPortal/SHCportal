@@ -56,7 +56,9 @@ create trigger on_auth_user_created
 create or replace function public.protect_role() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if new.role is distinct from old.role and not public.is_admin() then
+  -- auth.uid() is null when run from the Supabase SQL Editor (allowed)
+  if new.role is distinct from old.role
+     and auth.uid() is not null and not public.is_admin() then
     new.role := old.role;
   end if;
   return new;
