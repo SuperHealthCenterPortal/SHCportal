@@ -42,6 +42,18 @@ jobs:
       - name: Sync
         run: npx cap sync android
 
+      - name: Use permanent signing key (so updates install over the old app)
+        env:
+          KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Permanent key installed"
+          else
+            echo "::warning::DEBUG_KEYSTORE_B64 secret not set - APK will use a random key and phones must uninstall before updating"
+          fi
+
       - name: Build APK
         working-directory: android
         run: |
