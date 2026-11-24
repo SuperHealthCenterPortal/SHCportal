@@ -244,6 +244,18 @@ create trigger msg_stamp before insert on public.consult_messages
   for each row execute function public.stamp_message();
 
 -- =====================================================================
+--  TABLE PERMISSIONS (new Supabase projects don't grant these automatically)
+--  Row Level Security above still decides which ROWS each person can see.
+-- =====================================================================
+grant usage on schema public to anon, authenticated;
+grant select on public.center_status, public.announcements,
+                public.schedules, public.questions to anon;
+grant insert on public.questions to anon;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
+grant execute on all functions in schema public to anon, authenticated;
+
+-- =====================================================================
 --  REALTIME (live chat, live announcements, doctor status)
 -- =====================================================================
 do $$ begin
